@@ -24,6 +24,29 @@ func check(e error) {
 	}
 }
 
+func ipfromhostname(nameserver string) (addr string) {
+	target := dns.Fqdn(nameserver)
+	server := "8.8.8.8"
+	c := dns.Client{}
+	msg := dns.Msg{}
+	msg.SetQuestion(target, dns.TypeA)
+	r, _, err := c.Exchange(&msg, server+":53")
+	if err != nil {
+		fmt.Printf("[ERR] %s query timed out\n", nameserver)
+		return
+	}
+	if len(r.Answer) == 0 {
+		log.Fatal("No results")
+	}
+	for _, ans := range r.Answer {
+		Arecord := ans.(*dns.A)
+		addr = Arecord.A.String()
+	}
+
+	//fmt.Printf("addr: %s\n", addr)
+	return
+}
+
 func query(name string, record map[interface{}]string, domain string, nameserver string) {
 	target := dns.Fqdn(name + "." + domain)
 	server := nameserver
@@ -158,6 +181,8 @@ func main() {
 		}
 		if nameserver == "" {
 			log.Fatal("please specify a nameserver ip")
+		} else {
+			nameserver = ipfromhostname(nameserver)
 		}
 
 		data, err := ioutil.ReadFile(configfile)
