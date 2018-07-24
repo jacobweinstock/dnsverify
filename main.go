@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 
 	"github.com/miekg/dns"
@@ -103,25 +104,31 @@ func check(e error) {
 }
 
 func ipfromhostname(nameserver string) (addr string) {
-	target := dns.Fqdn(nameserver)
-	server := "8.8.8.8"
-	c := dns.Client{}
-	msg := dns.Msg{}
-	msg.SetQuestion(target, dns.TypeA)
-	r, _, err := c.Exchange(&msg, server+":53")
-	if err != nil {
-		fmt.Printf("[ERR] %s query timed out\n", nameserver)
-		return
-	}
-	if len(r.Answer) == 0 {
-		log.Fatal("No results")
-	}
-	for _, ans := range r.Answer {
-		Arecord := ans.(*dns.A)
-		addr = Arecord.A.String()
-	}
+	ip := net.ParseIP(nameserver)
+	//fmt.Printf("ip is: %s", ip)
+	if ip == nil {
+		target := dns.Fqdn(nameserver)
+		server := "8.8.8.8"
+		c := dns.Client{}
+		msg := dns.Msg{}
+		msg.SetQuestion(target, dns.TypeA)
+		r, _, err := c.Exchange(&msg, server+":53")
+		if err != nil {
+			fmt.Printf("[ERR] %s query timed out\n", nameserver)
+			return
+		}
+		if len(r.Answer) == 0 {
+			log.Fatal("No results")
+		}
+		for _, ans := range r.Answer {
+			Arecord := ans.(*dns.A)
+			addr = Arecord.A.String()
+		}
 
-	//fmt.Printf("addr: %s\n", addr)
+		//fmt.Printf("addr: %s\n", addr)
+	} else {
+		addr = nameserver
+	}
 	return
 }
 
