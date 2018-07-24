@@ -6,11 +6,13 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
 	"os"
+	"strings"
 
 	"github.com/miekg/dns"
 	"github.com/urfave/cli"
@@ -103,6 +105,15 @@ func check(e error) {
 	}
 }
 
+func rrtypecheck(ans dns.RR, target string, rtype string) error {
+	rrtype := strings.Fields(ans.Header().String())
+	if rrtype[3] != rtype {
+		fmt.Printf("[ERR] %s is not a type %s record it is a type %s record\n", target, rtype, rrtype[3])
+		return errors.New("bad record type")
+	}
+	return nil
+}
+
 func ipfromhostname(nameserver string) (addr string) {
 	ip := net.ParseIP(nameserver)
 	//fmt.Printf("ip is: %s", ip)
@@ -167,6 +178,10 @@ func query(name string, record map[interface{}]string, domain string, nameserver
 	}
 	for _, ans := range r.Answer {
 		if rtype == "A" {
+			err := rrtypecheck(ans, target, rtype)
+			if err != nil {
+				return
+			}
 			Arecord := ans.(*dns.A)
 			value = Arecord.A.String()
 			if rvalue != value {
@@ -180,6 +195,10 @@ func query(name string, record map[interface{}]string, domain string, nameserver
 
 		}
 		if rtype == "AAAA" {
+			err := rrtypecheck(ans, target, rtype)
+			if err != nil {
+				return
+			}
 			Arecord := ans.(*dns.AAAA)
 			value = Arecord.AAAA.String()
 			if rvalue != value {
@@ -192,6 +211,10 @@ func query(name string, record map[interface{}]string, domain string, nameserver
 			}
 		}
 		if rtype == "PTR" {
+			err := rrtypecheck(ans, target, rtype)
+			if err != nil {
+				return
+			}
 			Arecord := ans.(*dns.PTR)
 			value = Arecord.Ptr
 			if rvalue != value {
@@ -204,6 +227,10 @@ func query(name string, record map[interface{}]string, domain string, nameserver
 			}
 		}
 		if rtype == "CNAME" {
+			err := rrtypecheck(ans, target, rtype)
+			if err != nil {
+				return
+			}
 			Arecord := ans.(*dns.CNAME)
 			value = Arecord.Target
 			if rvalue != value {
@@ -216,6 +243,10 @@ func query(name string, record map[interface{}]string, domain string, nameserver
 			}
 		}
 		if rtype == "TXT" {
+			err := rrtypecheck(ans, target, rtype)
+			if err != nil {
+				return
+			}
 			Arecord := ans.(*dns.TXT)
 			value = Arecord.Txt[0]
 			if rvalue != value {
