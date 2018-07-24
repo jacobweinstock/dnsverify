@@ -18,6 +18,84 @@ import (
 
 var changedata = map[string]map[string]string{}
 
+func main() {
+
+	var configfile string
+	var domain string
+	var nameserver string
+
+	app := cli.NewApp()
+
+	app.Flags = []cli.Flag{
+		cli.StringFlag{
+			Name:        "config, c",
+			Usage:       "Load configuration from `FILE`",
+			Destination: &configfile,
+		},
+		cli.StringFlag{
+			Name:        "domain, d",
+			Usage:       "Domain to query against",
+			Destination: &domain,
+		},
+		cli.StringFlag{
+			Name:        "nameserver, n",
+			Usage:       "nameserver to query against",
+			Destination: &nameserver,
+		},
+	}
+
+	app.Action = func(c *cli.Context) error {
+
+		if configfile == "" {
+			log.Fatal("please specify a conifg file")
+		}
+		if domain == "" {
+			log.Fatal("please specify a domain")
+		}
+		if nameserver == "" {
+			log.Fatal("please specify a nameserver ip")
+		} else {
+			nameserver = ipfromhostname(nameserver)
+		}
+
+		data, err := ioutil.ReadFile(configfile)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		results := make(map[interface{}]map[interface{}]string)
+		err = yaml.Unmarshal(data, &results)
+		if err != nil {
+			log.Fatalln(err)
+		}
+
+		for k, va := range results {
+			var key string
+			key = k.(string)
+			query(key, va, domain, nameserver)
+		}
+
+		//fmt.Println(changedata)
+		y, err := yaml.Marshal(changedata)
+		if err != nil {
+			log.Fatalln(err)
+		}
+		fmt.Println(string(y))
+		d2 := []byte(y)
+
+		err = ioutil.WriteFile("./changes.yaml", d2, 0644)
+		check(err)
+
+		return nil
+	}
+
+	err := app.Run(os.Args)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+}
+
 func check(e error) {
 	if e != nil {
 		panic(e)
@@ -143,82 +221,4 @@ func query(name string, record map[interface{}]string, domain string, nameserver
 			}
 		}
 	}
-}
-
-func main() {
-
-	var configfile string
-	var domain string
-	var nameserver string
-
-	app := cli.NewApp()
-
-	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:        "config, c",
-			Usage:       "Load configuration from `FILE`",
-			Destination: &configfile,
-		},
-		cli.StringFlag{
-			Name:        "domain, d",
-			Usage:       "Domain to query against",
-			Destination: &domain,
-		},
-		cli.StringFlag{
-			Name:        "nameserver, n",
-			Usage:       "nameserver to query against",
-			Destination: &nameserver,
-		},
-	}
-
-	app.Action = func(c *cli.Context) error {
-
-		if configfile == "" {
-			log.Fatal("please specify a conifg file")
-		}
-		if domain == "" {
-			log.Fatal("please specify a domain")
-		}
-		if nameserver == "" {
-			log.Fatal("please specify a nameserver ip")
-		} else {
-			nameserver = ipfromhostname(nameserver)
-		}
-
-		data, err := ioutil.ReadFile(configfile)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		results := make(map[interface{}]map[interface{}]string)
-		err = yaml.Unmarshal(data, &results)
-		if err != nil {
-			log.Fatalln(err)
-		}
-
-		for k, va := range results {
-			var key string
-			key = k.(string)
-			query(key, va, domain, nameserver)
-		}
-
-		//fmt.Println(changedata)
-		y, err := yaml.Marshal(changedata)
-		if err != nil {
-			log.Fatalln(err)
-		}
-		fmt.Println(string(y))
-		d2 := []byte(y)
-
-		err = ioutil.WriteFile("./changes.yaml", d2, 0644)
-		check(err)
-
-		return nil
-	}
-
-	err := app.Run(os.Args)
-	if err != nil {
-		log.Fatal(err)
-	}
-
 }
